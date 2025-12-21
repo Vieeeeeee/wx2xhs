@@ -11,6 +11,8 @@ function App() {
   const [cards, setCards] = useState<Card[]>([])
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [images, setImages] = useState<Map<string, string>>(new Map())
+  const [typography, setTypography] = useState({ fontSize: 44, lineHeight: 1.7, paragraphSpacing: 1.2 })
   const textInputRef = useRef<RichTextInputHandle>(null)
 
   const selectedCard = cards.find(c => c.id === selectedCardId)
@@ -25,13 +27,9 @@ function App() {
   }, [originalText])
 
   const handleReset = useCallback(() => {
-    // Find current selection index before regenerating
     const currentIndex = cards.findIndex(c => c.id === selectedCardId)
-
     const newCards = splitToCards(originalText)
     setCards(newCards)
-
-    // Preserve selection by index (or keep at same position if possible)
     if (currentIndex >= 0 && newCards.length > 0) {
       const newIndex = Math.min(currentIndex, newCards.length - 1)
       setSelectedCardId(newCards[newIndex].id)
@@ -53,11 +51,13 @@ function App() {
 
   const handleCardClick = (card: Card) => {
     setSelectedCardId(card.id)
-    // Find the starting text of the card and scroll to it in the input (Sync)
-    // Take a snippet to search
     const snippet = card.text.trim().substring(0, 20)
     textInputRef.current?.scrollToText(snippet)
   }
+
+  const handleImageAdd = useCallback((id: string, base64: string) => {
+    setImages(prev => new Map(prev).set(id, base64))
+  }, [])
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -90,6 +90,8 @@ function App() {
             ref={textInputRef}
             value={originalText}
             onChange={setOriginalText}
+            onImageAdd={handleImageAdd}
+            images={images}
             placeholder="在此粘贴文章全文...
 
 支持格式标记：
@@ -137,13 +139,52 @@ function App() {
 
         {/* Right Column - Preview Only */}
         <div className="w-[45%] bg-stone-100 p-6 flex flex-col min-h-0">
+          {/* Typography Controls */}
+          <div className="shrink-0 mb-4 p-3 bg-white rounded-lg border border-stone-200 flex flex-wrap gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-stone-500">字号:</span>
+              <button
+                onClick={() => setTypography(t => ({ ...t, fontSize: Math.max(32, t.fontSize - 2) }))}
+                className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200"
+              >-</button>
+              <span className="w-8 text-center">{typography.fontSize}</span>
+              <button
+                onClick={() => setTypography(t => ({ ...t, fontSize: Math.min(60, t.fontSize + 2) }))}
+                className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200"
+              >+</button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-stone-500">行高:</span>
+              <button
+                onClick={() => setTypography(t => ({ ...t, lineHeight: Math.max(1.2, +(t.lineHeight - 0.1).toFixed(1)) }))}
+                className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200"
+              >-</button>
+              <span className="w-8 text-center">{typography.lineHeight}</span>
+              <button
+                onClick={() => setTypography(t => ({ ...t, lineHeight: Math.min(2.5, +(t.lineHeight + 0.1).toFixed(1)) }))}
+                className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200"
+              >+</button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-stone-500">段距:</span>
+              <button
+                onClick={() => setTypography(t => ({ ...t, paragraphSpacing: Math.max(0.5, +(t.paragraphSpacing - 0.1).toFixed(1)) }))}
+                className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200"
+              >-</button>
+              <span className="w-8 text-center">{typography.paragraphSpacing}</span>
+              <button
+                onClick={() => setTypography(t => ({ ...t, paragraphSpacing: Math.min(3, +(t.paragraphSpacing + 0.1).toFixed(1)) }))}
+                className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200"
+              >+</button>
+            </div>
+          </div>
           {selectedCard ? (
             <div className="flex-1 overflow-y-auto min-h-0 flex flex-col items-center">
               <div className="shrink-0 text-sm font-medium text-stone-600 mb-4 self-start">
                 卡片预览
               </div>
               <div className="flex-1 flex items-center justify-center">
-                <CardPreview card={selectedCard} />
+                <CardPreview card={selectedCard} images={images} typography={typography} />
               </div>
             </div>
           ) : (
@@ -160,7 +201,7 @@ function App() {
       {/* Hidden export containers */}
       <div className="absolute left-[-9999px] top-0">
         {cards.map(card => (
-          <CardPreview key={card.id} card={card} forExport />
+          <CardPreview key={card.id} card={card} images={images} typography={typography} forExport />
         ))}
       </div>
     </div>
@@ -168,4 +209,5 @@ function App() {
 }
 
 export default App
+
 

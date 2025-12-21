@@ -119,6 +119,14 @@ body {
   padding: 0 4px;
 }
 
+/* Image styles */
+.card-preview .card-text img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.8em 0;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

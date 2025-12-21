@@ -4,52 +4,67 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import rehypeRaw from 'rehype-raw'
 
+interface Typography {
+    fontSize: number
+    lineHeight: number
+    paragraphSpacing: number
+}
+
 interface CardPreviewProps {
     card: Card
+    images?: Map<string, string>
+    typography?: Typography
     forExport?: boolean
 }
 
-export function CardPreview({ card, forExport = false }: CardPreviewProps) {
-    // 1. Pre-process text to support ==highlight== by converting to <mark>
-    let processedText = card.text.replace(/==([^=]+)==/g, '<mark>$1</mark>')
+// Parse content into segments: { type: 'text', content: string } | { type: 'image', id: string }
+function parseContentSegments(text: string): Array<{ type: 'text' | 'image'; content: string }> {
+    const segments: Array<{ type: 'text' | 'image'; content: string }> = []
+    const regex = /\[IMG:([a-zA-Z0-9_-]+)\]/g
+    let lastIndex = 0
+    let match
 
-    // 2. Convert single newlines to double newlines for proper paragraph breaks
-    // ReactMarkdown treats \n\n as paragraph break (new <p> tag with margin)
-    // but single \n with remark-breaks becomes <br> (no margin)
-    // User wants visible paragraph spacing, so we convert all single \n to \n\n
-    processedText = processedText.replace(/\n/g, '\n\n')
+    while ((match = regex.exec(text)) !== null) {
+        // Add text before this match
+        if (match.index > lastIndex) {
+            segments.push({ type: 'text', content: text.slice(lastIndex, match.index) })
+        }
+        // Add the image
+        segments.push({ type: 'image', content: match[1] })
+        lastIndex = regex.lastIndex
+    }
 
-    // Custom renderer for ReactMarkdown to match our specific syntax requirement
-    // For ==highlight== we might need a plugin or just custom regex replacement before passing to MD
-    // But GFM and standard MD don't support ==.
-    // Let's stick to standard MD for now, but handle == manually if needed?
-    // User asked for "obsidian rendering mode". Obsidian supports ==highlight==.
-    // react-markdown doesn't support highlight via == out of the box without remark-directive or custom plugin.
-    // Quick fix: replace ==text== with <mark>text</mark> before passing to ReactMarkdown, 
-    // allow html (rehype-raw) OR just use regex to wrap in a custom component? 
-    // Simplest: Pre-process == to <mark> and enable rehype-raw? No, safety.
-    // Let's verify if user used == in the example. Yes.
-    // Actually, `remark-gfm` supports strikethrough ~~ but not ==.
-    // Let's try to map == to ** (bold) or just keep it simple for now, 
-    // OR create a simple regex parser for == if necessary later.
-    // BETTER: Use `parseFormattedText` concept but specifically for == if MD doesn't catch it.
-    // However, the `parseFormattedText` was doing exactly what we needed.
-    // The user wants "render md format".
-    // Let's use ReactMarkdown. For ==, we can pre-process it to <mark> and use `rehype-raw` IF we install it.
-    // Unsafe? It's local input.
-    // Alternative: Just trust standard MD for now. Bold/Italic work. == might show as ==.
-    // Let's update text to replace `==` with `MARKER` then custom component? Too complex.
-    // Let's stick to ReactMarkdown for structure.
+    // Add remaining text
+    if (lastIndex < text.length) {
+        segments.push({ type: 'text', content: text.slice(lastIndex) })
+    }
 
-    // WAIT. If I switch to ReactMarkdown, my custom classes in index.css for `strong`, `em` etc still apply? Yes.
-    // But `class="card-text"` needs to be on the container.
+    return segments
+}
 
-    // Let's pre-process `==` to just be `**` for highlighting if we don't have a plugin, 
-    // OR just use a simple regex replacer to wrap in <mark> and use `rehype-raw` is best match for Obsidian.
-    // Checking package.json... I didn't install rehype-raw.
-    // I will try to support == by replacing it with a supported syntax or just let it be text for now 
-    // unless I install more packages.
-    // Let's use `remark-gfm` for tables/etc if user pastes them.
+export function CardPreview({ card, images, typography, forExport = false }: CardPreviewProps) {
+    const fontSize = typography?.fontSize ?? 44
+    const lineHeight = typography?.lineHeight ?? 1.7
+    const paragraphSpacing = typography?.paragraphSpacing ?? 1.2
+
+    // Pre-process text for ==highlight==
+    const processedText = card.text.replace(/==([^=]+)==/g, '<mark>$1</mark>')
+
+    // Parse into segments
+    const segments = parseContentSegments(processedText)
+
+    const textStyles = {
+        fontSize: `${fontSize}px`,
+        lineHeight: lineHeight,
+    } as React.CSSProperties
+
+    const imgStyles: React.CSSProperties = {
+        width: '100%',
+        height: 'auto',
+        display: 'block',
+        margin: '0.8em auto',
+        borderRadius: '8px'
+    }
 
     return (
         <div
@@ -58,7 +73,7 @@ export function CardPreview({ card, forExport = false }: CardPreviewProps) {
             style={forExport ? {} : { width: 1080 * 0.3, height: 1920 * 0.3 }}
         >
             <div
-                className={forExport ? "" : "card-preview"} // Correct scaling container
+                className={forExport ? "" : "card-preview"}
                 style={forExport ? {} : {
                     transform: `scale(0.3)`,
                     transformOrigin: 'top left',
@@ -69,21 +84,39 @@ export function CardPreview({ card, forExport = false }: CardPreviewProps) {
                     left: 0
                 }}
             >
-                {/* Ensure card-text is nested inside card-preview for CSS to work */}
-                <div className="card-text">
-                    <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkBreaks]}
-                        rehypePlugins={[rehypeRaw]}
-                        components={{
-                            // Ensure standard p tag usage
-                        }}
-                    >
-                        {processedText}
-                    </ReactMarkdown>
+                <div className="card-text" style={textStyles}>
+                    {segments.map((segment, index) => {
+                        if (segment.type === 'image') {
+                            const base64 = images?.get(segment.content)
+                            if (base64) {
+                                return <img key={index} src={base64} alt="image" style={imgStyles} />
+                            }
+                            return <span key={index}>[IMG:{segment.content}]</span>
+                        }
+                        // Text segment: process through ReactMarkdown
+                        const textWithBreaks = segment.content.replace(/\n/g, '\n\n')
+                        return (
+                            <ReactMarkdown
+                                key={index}
+                                remarkPlugins={[remarkGfm, remarkBreaks]}
+                                rehypePlugins={[rehypeRaw]}
+                                components={{
+                                    p: ({ children }) => (
+                                        <p style={{ marginBottom: `${paragraphSpacing}em` }}>{children}</p>
+                                    )
+                                }}
+                            >
+                                {textWithBreaks}
+                            </ReactMarkdown>
+                        )
+                    })}
                 </div>
             </div>
         </div>
     )
 }
+
+
+
 
 
