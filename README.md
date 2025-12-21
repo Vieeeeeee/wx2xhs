@@ -1,73 +1,101 @@
-# React + TypeScript + Vite
+# WX2XHS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**微信公众号文章 → 小红书图文卡片转换器**
 
-Currently, two official plugins are available:
+[English](#english) | [中文](#中文)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 中文
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 简介
 
-## Expanding the ESLint configuration
+WX2XHS 是一个将微信公众号长文一键转换为小红书图文卡片的工具。支持手动分页、Markdown 渲染、富文本编辑，一键导出为图片压缩包。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### ✨ 功能特点
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **手动分页控制** - 使用 `---` 在任意位置强制分页，完全掌控每张卡片的内容
+- **Markdown 渲染** - 支持标题（# ## ###）、**粗体**、*斜体*、~~删除线~~
+- **高亮语法** - 使用 `==文字==` 添加高亮效果（类似 Obsidian）
+- **实时预览** - 右侧实时显示 1080×1920 小红书卡片效果
+- **一键去空行** - 工具栏按钮快速清理空白行
+- **卡片同步定位** - 点击卡片自动跳转到原文对应位置
+- **批量导出** - 所有卡片一键打包为 ZIP 图片压缩包
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 🚀 快速开始
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+
+# 构建生产版本
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 📖 使用方法
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. 在左侧文本框粘贴微信公众号文章
+2. 使用 `---`（独占一行）标记分页位置
+3. 点击「生成分页」预览效果
+4. 调整后点击「导出图片」下载 ZIP 压缩包
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 🛠 技术栈
+
+- React 19 + TypeScript
+- Vite 7 + Tailwind CSS 4
+- react-markdown + remark-gfm
+- html2canvas + JSZip
+
+---
+
+## English
+
+### Introduction
+
+WX2XHS is a tool that converts WeChat articles into Xiaohongshu (Little Red Book) image cards. It supports manual pagination, Markdown rendering, rich text editing, and one-click export to a ZIP archive.
+
+### ✨ Features
+
+- **Manual Pagination** - Use `---` to force page breaks anywhere
+- **Markdown Rendering** - Supports headings (# ## ###), **bold**, *italic*, ~~strikethrough~~
+- **Highlight Syntax** - Use `==text==` for highlights (Obsidian-style)
+- **Live Preview** - Real-time 1080×1920 card preview
+- **Remove Empty Lines** - One-click toolbar button to clean up
+- **Card-to-Source Sync** - Click a card to jump to its source text
+- **Batch Export** - Export all cards as a ZIP of PNG images
+
+### 🚀 Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Build for production
+npm run build
 ```
+
+### 📖 Usage
+
+1. Paste your WeChat article in the left text area
+2. Use `---` (on its own line) to mark page breaks
+3. Click "生成分页" (Generate) to preview cards
+4. Click "导出图片" (Export) to download as ZIP
+
+### 🛠 Tech Stack
+
+- React 19 + TypeScript
+- Vite 7 + Tailwind CSS 4
+- react-markdown + remark-gfm
+- html2canvas + JSZip
+
+---
+
+## License
+
+MIT
