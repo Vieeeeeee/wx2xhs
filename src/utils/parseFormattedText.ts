@@ -10,7 +10,7 @@ export function parseFormattedText(text: string): string {
         // If paragraph is empty, return empty string (ignores empty lines)
         if (!p.trim()) return ''
 
-        let html = p
+        const html = p
             // Escape HTML entities first
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')

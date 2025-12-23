@@ -1,83 +1,142 @@
 import html2canvas from 'html2canvas'
 import JSZip from 'jszip'
 
+async function nextFrame(times = 1): Promise<void> {
+    for (let i = 0; i < times; i++) {
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    }
+}
+
+async function waitForFonts(timeoutMs = 3000): Promise<void> {
+    const fonts = document.fonts
+    if (!fonts?.ready) return
+
+    await Promise.race([
+        fonts.ready.then(() => undefined),
+        new Promise<void>(resolve => setTimeout(resolve, timeoutMs)),
+    ])
+}
+
+async function waitForImages(root: HTMLElement, timeoutMs = 5000): Promise<void> {
+    const imgs = Array.from(root.querySelectorAll('img'))
+    if (imgs.length === 0) return
+
+    const waitOne = (img: HTMLImageElement) => new Promise<void>(resolve => {
+        if (img.complete && img.naturalWidth > 0) return resolve()
+
+        // decode() is more reliable when available
+        if (typeof img.decode === 'function') {
+            img.decode().then(() => resolve(), () => resolve())
+            return
+        }
+
+        const cleanup = () => {
+            img.removeEventListener('load', onDone)
+            img.removeEventListener('error', onDone)
+        }
+        const onDone = () => {
+            cleanup()
+            resolve()
+        }
+
+        img.addEventListener('load', onDone, { once: true })
+        img.addEventListener('error', onDone, { once: true })
+    })
+
+    await Promise.race([
+        Promise.all(imgs.map(waitOne)).then(() => undefined),
+        new Promise<void>(resolve => setTimeout(resolve, timeoutMs)),
+    ])
+}
+
+async function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
+    if (!blob) throw new Error('Failed to encode PNG')
+    return blob
+}
+
 /**
  * Export all card elements as PNG images bundled in a zip file
  * @param cardIds - Array of card IDs to export
  */
 export async function exportCards(cardIds: string[]): Promise<void> {
     const zip = new JSZip()
-    const folder = zip.folder('cards') // Create a subfolder for better organization
+    const folder = zip.folder('cards')
 
-    // Create a temporary container for cloning elements into view
-    const container = document.createElement('div')
-    container.style.position = 'fixed'
-    container.style.top = '0'
-    container.style.left = '0'
-    container.style.zIndex = '-9999' // Behind everything
-    // opacity removed to prevent html2canvas transparent capture
-
-    // Important: html2canvas needs the element to be visible in DOM.
-    // We rely on z-index being behind strict background to hide it from user.
-    // Place it off-screen BUT within a rendered context?
-    // Let's use top: 0, left: 0 but obscured.
-    document.body.appendChild(container)
-
+    let container: HTMLDivElement | null = null
     try {
+        await waitForFonts()
+
+        // Render clones in a stable, on-screen coordinate space to avoid html2canvas
+        // issues with off-screen (negative) coordinates.
+        container = document.createElement('div')
+        container.style.position = 'fixed'
+        container.style.top = '0'
+        container.style.left = '0'
+        container.style.width = '0'
+        container.style.height = '0'
+        container.style.overflow = 'visible'
+        container.style.pointerEvents = 'none'
+        container.style.zIndex = '-1'
+        document.body.appendChild(container)
+
         for (let i = 0; i < cardIds.length; i++) {
             const cardId = cardIds[i]
-            const originalElement = document.getElementById(`card-export-${cardId}`)
+            const element = document.getElementById(`card-export-${cardId}`)
 
-            if (!originalElement) {
+            if (!element) {
                 console.warn(`Card element not found: card-export-${cardId}`)
                 continue
             }
 
-            // Clone the element to bring it into a clean capturing context
-            const clone = originalElement.cloneNode(true) as HTMLElement
-            // Ensure clone has explicit dimensions and background if not set by class
-            clone.style.margin = '0'
-            clone.style.transform = 'none'
-
-            // Append to our fixed container
-            container.appendChild(clone)
-
             try {
-                // Capture
+                const clone = element.cloneNode(true) as HTMLElement
+                clone.style.position = 'absolute'
+                clone.style.top = '0'
+                clone.style.left = '0'
+                clone.style.margin = '0'
+                clone.style.transform = 'none'
+                container.appendChild(clone)
+
+                // Give the browser a moment to layout, and ensure images are decoded.
+                await nextFrame(2)
+                await waitForImages(clone)
+                await nextFrame(1)
+
+                const width = clone.offsetWidth || 1080
+                const height = clone.offsetHeight || 1440
+
                 const canvas = await html2canvas(clone, {
-                    scale: 1, // 1080x1920
+                    scale: 1,
                     useCORS: true,
-                    backgroundColor: '#ffffff', // Force white background
+                    foreignObjectRendering: true,
+                    backgroundColor: '#ffffff',
                     logging: false,
-                    // Fix potential scroll issues
+                    width,
+                    height,
+                    windowWidth: width,
+                    windowHeight: height,
                     scrollX: 0,
                     scrollY: 0,
-                    windowWidth: document.documentElement.clientWidth,
-                    windowHeight: document.documentElement.clientHeight
+                    x: 0,
+                    y: 0,
                 })
 
-                // Convert to dataUrl (returns "data:image/png;base64,...")
-                const dataUrl = canvas.toDataURL('image/png', 1.0)
-                const base64Data = dataUrl.split(',')[1]
-
                 const fileName = `card_${String(i + 1).padStart(2, '0')}.png`
-                // Add to zip (if folder exists, use it, else root)
+                const pngBlob = await canvasToBlob(canvas)
                 if (folder) {
-                    folder.file(fileName, base64Data, { base64: true })
+                    folder.file(fileName, pngBlob)
                 } else {
-                    zip.file(fileName, base64Data, { base64: true })
+                    zip.file(fileName, pngBlob)
                 }
-
             } catch (error) {
                 console.error(`Failed to capture card ${cardId}:`, error)
             } finally {
-                // Clean up clone
-                container.removeChild(clone)
+                // Clean up clone if it was appended
+                while (container.firstChild) container.removeChild(container.firstChild)
             }
         }
 
-        // Generate and download zip
-        // Generate blob
         const zipBlob = await zip.generateAsync({ type: 'blob' })
 
         if (zipBlob.size === 0) {
@@ -93,11 +152,14 @@ export async function exportCards(cardIds: string[]): Promise<void> {
         link.click()
         document.body.removeChild(link)
 
-        // Cleanup URL after a small delay
         setTimeout(() => URL.revokeObjectURL(url), 1000)
 
+    } catch (error) {
+        console.error('Export failed:', error)
+        alert('导出失败，请重试')
     } finally {
-        // Remove container
-        document.body.removeChild(container)
+        if (container && container.parentNode) {
+            container.parentNode.removeChild(container)
+        }
     }
 }

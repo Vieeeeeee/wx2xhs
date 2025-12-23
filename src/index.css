@@ -20,33 +20,88 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 #root {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
-/* Card preview template styles */
+/* Card preview template styles - 3:4 aspect ratio */
 .card-preview {
   width: 1080px;
-  height: 1920px;
+  height: 1440px;
   background: linear-gradient(180deg, #fdfcfa 0%, #f9f7f4 100%);
-  padding: 150px 100px;
-  /* Reduced padding for denser layout */
+  padding: 100px 100px 80px;
+  /* Vertical padding for 3:4 ratio */
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   /* Align top to avoid clipping */
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
     "Noto Serif SC", serif;
+  position: relative;
+  isolation: isolate;
+}
+
+/* Background Style 1: Classic - Warm cream with subtle gradient */
+.card-preview.bg-classic {
+  background: linear-gradient(180deg, #fdfcfa 0%, #f9f7f4 100%);
+}
+
+/* Background Style 2: Grid - Neutral gray elegant grid pattern */
+.card-preview.bg-grid {
+  background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
+}
+
+.card-preview.bg-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+
+/* Background Style 3: Paper - User Provided Texture */
+.card-preview.bg-paper {
+  background-color: #f1ede6;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-preview.bg-paper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url('/黄色纸背景.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: saturate(0.1);
+}
+
+/* Background Style 4: Grain - User Provided Texture */
+.card-preview.bg-grain {
+  background-color: #e8e6e2;
+  background-image: url('/磨砂背景.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .card-preview .card-text {
-  font-size: 44px;
-  line-height: 1.7;
-  /* Increased line height per user request */
-  color: #2c2c2c;
+  position: relative;
+  z-index: 1;
+  font-size: 32px;
+  line-height: 1.6;
+  color: #1a1a1a;
   text-align: justify;
   text-justify: inter-ideograph;
   /* Better CJK justification */
@@ -57,7 +112,7 @@ body {
 }
 
 .card-preview .card-text p {
-  margin-bottom: 1.2em;
+  margin-bottom: var(--paragraph-spacing, 1.2em);
   /* Compressed spacing */
   min-height: 1em;
   /* For empty lines */
@@ -70,7 +125,7 @@ body {
 
 /* Heading styles */
 .card-preview .card-text h1 {
-  font-size: 66px;
+  font-size: 1.5em;
   font-weight: 700;
   margin-bottom: 0.8em;
   margin-top: 0.5em;
@@ -78,7 +133,7 @@ body {
 }
 
 .card-preview .card-text h2 {
-  font-size: 54px;
+  font-size: 1.25em;
   font-weight: 600;
   margin-bottom: 0.6em;
   margin-top: 0.4em;
@@ -86,7 +141,7 @@ body {
 }
 
 .card-preview .card-text h3 {
-  font-size: 48px;
+  font-size: 1.1em;
   font-weight: 600;
   margin-bottom: 0.5em;
   margin-top: 0.3em;
@@ -122,15 +177,51 @@ body {
 /* Image styles */
 .card-preview .card-text img {
   max-width: 100%;
+  max-height: 520px;
+  object-fit: contain;
   height: auto;
   border-radius: 8px;
   margin: 0.8em 0;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
+/* List styles - neat round dots */
+.card-preview .card-text ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.5em 0;
+}
+
+.card-preview .card-text ul li {
+  position: relative;
+  padding-left: 1.2em;
+  margin-bottom: 0.4em;
+}
+
+.card-preview .card-text ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
   width: 6px;
   height: 6px;
+  background: #444;
+  border-radius: 50%;
+}
+
+.card-preview .card-text ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.card-preview .card-text ol li {
+  margin-bottom: 0.4em;
+}
+
+/* Scrollbar styling - thin and subtle */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -138,10 +229,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: rgba(0, 0, 0, 0.25);
 }
