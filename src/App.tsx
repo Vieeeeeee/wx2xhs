@@ -7,17 +7,35 @@ import { CardPreview, type BackgroundStyle } from './components/CardPreview'
 import { RichTextInput, type RichTextInputHandle } from './components/RichTextInput'
 import { ResizablePanels } from './components/ResizablePanels'
 
+const STORAGE_KEY = 'wx2xhs-draft'
+
+// Load saved state from localStorage
+function loadSavedState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      return JSON.parse(saved)
+    }
+  } catch (e) {
+    console.warn('Failed to load saved state:', e)
+  }
+  return null
+}
+
 function App() {
-  const [originalText, setOriginalText] = useState('')
+  const savedState = loadSavedState()
+
+  const [originalText, setOriginalText] = useState(savedState?.originalText ?? '')
   const [cards, setCards] = useState<Card[]>([])
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [images, setImages] = useState<Map<string, string>>(new Map())
   const [imageMeta, setImageMeta] = useState<Map<string, { width: number; height: number }>>(new Map())
-  const [typography, setTypography] = useState<Typography>({ fontSize: 32, lineHeight: 1.6, paragraphSpacing: 1.2, letterSpacing: 0.05 })
+  const [imageSizes, setImageSizes] = useState<Map<string, number>>(new Map()) // image ID -> width percentage (20-100)
+  const [typography, setTypography] = useState<Typography>(savedState?.typography ?? { fontSize: 32, lineHeight: 1.6, paragraphSpacing: 1.2, letterSpacing: 0.05 })
   const [isAutoMode, setIsAutoMode] = useState(false) // Auto mode: typography changes update --- positions
   const [previewScale, setPreviewScale] = useState(1.1) // zoom multiplier on top of "fit to viewport"
-  const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>('classic')
+  const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>(savedState?.backgroundStyle ?? 'classic')
   const textInputRef = useRef<RichTextInputHandle>(null)
   const cardsRef = useRef<Card[]>([])
   const selectedCardIdRef = useRef<string | null>(null)
@@ -28,8 +46,22 @@ function App() {
   cardsRef.current = cards
   selectedCardIdRef.current = selectedCardId
 
+  // Save state to localStorage when it changes
+  useEffect(() => {
+    const stateToSave = {
+      originalText,
+      typography,
+      backgroundStyle,
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave))
+    } catch (e) {
+      console.warn('Failed to save state:', e)
+    }
+  }, [originalText, typography, backgroundStyle])
+
   // Regenerate cards when originalText changes (simple split by ---)
-	  useEffect(() => {
+  useEffect(() => {
     // Skip regeneration during card editing to preserve focus
     if (isEditingCardRef.current) {
       isEditingCardRef.current = false
@@ -41,52 +73,52 @@ function App() {
       setSelectedCardId(null)
       return
     }
-	    const timeout = setTimeout(() => {
-	      const currentIndex = cardsRef.current.findIndex(c => c.id === selectedCardIdRef.current)
-	      const newCards = splitToCards(originalText)
-	      setCards(newCards)
-	      if (newCards.length > 0) {
-	        const newIndex = currentIndex >= 0 ? Math.min(currentIndex, newCards.length - 1) : 0
-	        setSelectedCardId(newCards[newIndex].id)
-	      } else {
-	        setSelectedCardId(null)
-	      }
-	    }, 200)
-	    return () => clearTimeout(timeout)
-	  }, [originalText])
+    const timeout = setTimeout(() => {
+      const currentIndex = cardsRef.current.findIndex(c => c.id === selectedCardIdRef.current)
+      const newCards = splitToCards(originalText)
+      setCards(newCards)
+      if (newCards.length > 0) {
+        const newIndex = currentIndex >= 0 ? Math.min(currentIndex, newCards.length - 1) : 0
+        setSelectedCardId(newCards[newIndex].id)
+      } else {
+        setSelectedCardId(null)
+      }
+    }, 200)
+    return () => clearTimeout(timeout)
+  }, [originalText])
 
   // Auto-mode: When typography changes, recalculate --- positions in text
-	  useEffect(() => {
-	    if (!isAutoMode) return
-	    if (!originalText.trim()) return
+  useEffect(() => {
+    if (!isAutoMode) return
+    if (!originalText.trim()) return
 
     const timeout = setTimeout(() => {
       const newText = recalculatePageBreaks(originalText, typography, imageMeta)
       if (newText !== originalText) {
         setOriginalText(newText)
       }
-	    }, 300)
-	    return () => clearTimeout(timeout)
-	  }, [isAutoMode, typography, imageMeta, originalText])
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [isAutoMode, typography, imageMeta, originalText])
 
-	  const selectedCard = cards.find(c => c.id === selectedCardId)
+  const selectedCard = cards.find(c => c.id === selectedCardId)
 
-	  useEffect(() => {
-	    const element = previewViewportRef.current
-	    if (!element) {
-	      setPreviewViewportSize(null)
-	      return
-	    }
+  useEffect(() => {
+    const element = previewViewportRef.current
+    if (!element) {
+      setPreviewViewportSize(null)
+      return
+    }
 
-	    const observer = new ResizeObserver(entries => {
-	      const rect = entries[0]?.contentRect
-	      if (!rect) return
-	      setPreviewViewportSize({ width: rect.width, height: rect.height })
-	    })
+    const observer = new ResizeObserver(entries => {
+      const rect = entries[0]?.contentRect
+      if (!rect) return
+      setPreviewViewportSize({ width: rect.width, height: rect.height })
+    })
 
-	    observer.observe(element)
-	    return () => observer.disconnect()
-	  }, [selectedCardId])
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [selectedCardId])
 
   // "生成分页" - Insert --- markers into text
   const handleGenerate = useCallback(() => {
@@ -151,6 +183,15 @@ function App() {
       newMap.delete(id)
       return newMap
     })
+    setImageSizes(prev => {
+      const newMap = new Map(prev)
+      newMap.delete(id)
+      return newMap
+    })
+  }, [])
+
+  const handleImageResize = useCallback((id: string, widthPercent: number) => {
+    setImageSizes(prev => new Map(prev).set(id, Math.min(100, Math.max(20, widthPercent))))
   }, [])
 
   // Handle card text changes from inline editing
@@ -194,29 +235,29 @@ function App() {
     setCards(prevCards => prevCards.map(c =>
       c.id === cardId ? { ...c, text: newText } : c
     ))
-	  }, [cards, originalText])
+  }, [cards, originalText])
 
-	  const fitScale = (() => {
-	    const baseWidth = 1080
-	    const baseHeight = 1440
-	    const padding = 24 // match preview viewport padding (p-6)
-	    if (!previewViewportSize) return 0.3
+  const fitScale = (() => {
+    const baseWidth = 1080
+    const baseHeight = 1440
+    const padding = 24 // match preview viewport padding (p-6)
+    if (!previewViewportSize) return 0.3
 
-	    const availableWidth = Math.max(0, previewViewportSize.width - padding * 2)
-	    const availableHeight = Math.max(0, previewViewportSize.height - padding * 2)
-	    if (availableWidth === 0 || availableHeight === 0) return 0.3
+    const availableWidth = Math.max(0, previewViewportSize.width - padding * 2)
+    const availableHeight = Math.max(0, previewViewportSize.height - padding * 2)
+    if (availableWidth === 0 || availableHeight === 0) return 0.3
 
-	    return Math.min(1, availableWidth / baseWidth, availableHeight / baseHeight)
-	  })()
+    return Math.min(1, availableWidth / baseWidth, availableHeight / baseHeight)
+  })()
 
-	  const effectivePreviewScale = fitScale * previewScale
+  const effectivePreviewScale = fitScale * previewScale
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="shrink-0 bg-white border-b border-stone-200 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-stone-800 tracking-wide">
-          WX2XHS MVP
+      <header className="shrink-0 bg-white border-b border-stone-200 px-6 py-2 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-stone-800 tracking-wide">
+          「文字」转「图文笔记」神器
         </h1>
         <div className="flex gap-3">
           <button
@@ -241,9 +282,6 @@ function App() {
         rightTitle="预览"
         leftPanel={
           <div className="p-4 flex flex-col h-full">
-            <label className="shrink-0 text-sm font-medium text-stone-600 mb-2">
-              原文输入
-            </label>
             <RichTextInput
               ref={textInputRef}
               value={originalText}
@@ -315,7 +353,7 @@ function App() {
               <div className="flex items-center gap-1">
                 <span className="text-stone-500">字号:</span>
                 <button
-                  onClick={() => setTypography(t => ({ ...t, fontSize: Math.max(32, t.fontSize - 2) }))}
+                  onClick={() => setTypography(t => ({ ...t, fontSize: Math.max(20, t.fontSize - 2) }))}
                   className="w-5 h-5 rounded bg-stone-100 hover:bg-stone-200"
                 >-</button>
                 <span className="w-6 text-center">{typography.fontSize}</span>
@@ -393,6 +431,8 @@ function App() {
                         <CardPreview
                           card={selectedCard}
                           images={images}
+                          imageSizes={imageSizes}
+                          onImageResize={handleImageResize}
                           typography={typography}
                           backgroundStyle={backgroundStyle}
                           displayScale={effectivePreviewScale}
@@ -493,7 +533,7 @@ function App() {
                       : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
                       }`}
                   >
-                    {style === 'classic' ? '经典' : style === 'grid' ? '网格' : style === 'paper' ? '纸感' : '颗粒'}
+                    {style === 'classic' ? '经典' : style === 'grid' ? '网格' : style === 'paper' ? '纸感' : '冷白'}
                   </button>
                 ))}
               </div>
@@ -505,7 +545,7 @@ function App() {
       {/* Hidden export containers */}
       <div style={{ position: 'absolute', visibility: 'hidden', opacity: 0, pointerEvents: 'none' }}>
         {cards.map(card => (
-          <CardPreview key={card.id} card={card} images={images} typography={typography} backgroundStyle={backgroundStyle} forExport />
+          <CardPreview key={card.id} card={card} images={images} imageSizes={imageSizes} typography={typography} backgroundStyle={backgroundStyle} forExport />
         ))}
       </div>
     </div>

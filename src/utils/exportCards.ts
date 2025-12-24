@@ -107,7 +107,7 @@ export async function exportCards(cardIds: string[]): Promise<void> {
                 const height = clone.offsetHeight || 1440
 
                 const canvas = await html2canvas(clone, {
-                    scale: 1,
+                    scale: 2, // 2x resolution for high-quality export
                     useCORS: true,
                     foreignObjectRendering: true,
                     backgroundColor: '#ffffff',
