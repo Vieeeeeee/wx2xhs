@@ -2,6 +2,8 @@
 
 **微信公众号文章 → 小红书图文卡片转换器**
 
+🌐 **在线演示 / Live Demo**: https://48d7d449.pinit.eth.limo
+
 [English](#english) | [中文](#中文)
 
 ---

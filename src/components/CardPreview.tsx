@@ -223,7 +223,7 @@ export function CardPreview({ card, images, imageSizes, onImageResize, typograph
             case 'paper':
                 return {
                     backgroundColor: baseColor,
-                    backgroundImage: 'radial-gradient(circle, #b8b8b8 2px, transparent 2px)',
+                    backgroundImage: 'radial-gradient(circle, #c8c8c8 2px, transparent 2px)',
                     backgroundSize: '64px 64px'
                 }
             case 'grain': {

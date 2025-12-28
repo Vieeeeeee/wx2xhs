@@ -136,7 +136,7 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: radial-gradient(circle, #b8b8b8 2px, transparent 2px);
+  background-image: radial-gradient(circle, #c8c8c8 2px, transparent 2px);
   background-size: 64px 64px;
   pointer-events: none;
 }
