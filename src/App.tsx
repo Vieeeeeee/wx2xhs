@@ -36,6 +36,7 @@ function App() {
   const [isAutoMode, setIsAutoMode] = useState(false) // Auto mode: typography changes update --- positions
   const [previewScale, setPreviewScale] = useState(1.1) // zoom multiplier on top of "fit to viewport"
   const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>(savedState?.backgroundStyle ?? 'classic')
+  const [bgColor, setBgColor] = useState<'cool' | 'white' | 'warm'>(savedState?.bgColor ?? 'white')
   const textInputRef = useRef<RichTextInputHandle>(null)
   const cardsRef = useRef<Card[]>([])
   const selectedCardIdRef = useRef<string | null>(null)
@@ -52,13 +53,14 @@ function App() {
       originalText,
       typography,
       backgroundStyle,
+      bgColor,
     }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave))
     } catch (e) {
       console.warn('Failed to save state:', e)
     }
-  }, [originalText, typography, backgroundStyle])
+  }, [originalText, typography, backgroundStyle, bgColor])
 
   // Regenerate cards when originalText changes (simple split by ---)
   useEffect(() => {
@@ -294,6 +296,7 @@ function App() {
 支持格式标记：
 **粗体** → 粗体
 ==高亮== → 高亮
+%%红字%% → 红字
 ---      → 手动强制分页（独占一行）"
               className="flex-1 min-h-0"
             />
@@ -358,7 +361,7 @@ function App() {
                 >-</button>
                 <span className="w-6 text-center">{typography.fontSize}</span>
                 <button
-                  onClick={() => setTypography(t => ({ ...t, fontSize: Math.min(60, t.fontSize + 2) }))}
+                  onClick={() => setTypography(t => ({ ...t, fontSize: Math.min(100, t.fontSize + 2) }))}
                   className="w-5 h-5 rounded bg-stone-100 hover:bg-stone-200"
                 >+</button>
               </div>
@@ -435,6 +438,7 @@ function App() {
                           onImageResize={handleImageResize}
                           typography={typography}
                           backgroundStyle={backgroundStyle}
+                          bgColor={bgColor}
                           displayScale={effectivePreviewScale}
                         />
                       </div>
@@ -533,9 +537,32 @@ function App() {
                       : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
                       }`}
                   >
-                    {style === 'classic' ? '经典' : style === 'grid' ? '网格' : style === 'paper' ? '纸感' : '冷白'}
+                    {style === 'classic' ? '经典' : style === 'grid' ? '网格' : style === 'paper' ? '点阵' : '磨砂'}
                   </button>
                 ))}
+
+                {/* Background Color Selector */}
+                <div className="mt-3 pt-3 border-t border-stone-200">
+                  <div className="text-xs text-stone-400 text-center mb-2">底色</div>
+                  <div className="flex justify-center gap-1.5">
+                    {([
+                      { key: 'cool', color: '#f8fafc', label: '冷' },
+                      { key: 'white', color: '#ffffff', label: '白' },
+                      { key: 'warm', color: '#fffcf5', label: '暖' },
+                    ] as const).map(({ key, color, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => setBgColor(key)}
+                        title={label}
+                        className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer ${bgColor === key
+                          ? 'border-stone-800 ring-2 ring-stone-300'
+                          : 'border-stone-300 hover:border-stone-400'
+                          }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -545,7 +572,7 @@ function App() {
       {/* Hidden export containers */}
       <div style={{ position: 'absolute', visibility: 'hidden', opacity: 0, pointerEvents: 'none' }}>
         {cards.map(card => (
-          <CardPreview key={card.id} card={card} images={images} imageSizes={imageSizes} typography={typography} backgroundStyle={backgroundStyle} forExport />
+          <CardPreview key={card.id} card={card} images={images} imageSizes={imageSizes} typography={typography} backgroundStyle={backgroundStyle} bgColor={bgColor} forExport />
         ))}
       </div>
     </div>

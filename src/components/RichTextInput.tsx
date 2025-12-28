@@ -61,34 +61,39 @@ function toggleInlineFormat(textarea: HTMLTextAreaElement, prefix: string, suffi
     const selectionEnd = textarea.selectionEnd ?? 0
 
     if (selectionStart !== selectionEnd) {
-        const selectedText = value.slice(selectionStart, selectionEnd)
+        // Trim trailing whitespace/newlines from selection to avoid inserting markers on next line
+        let effectiveEnd = selectionEnd
+        while (effectiveEnd > selectionStart && (value[effectiveEnd - 1] === '\n' || value[effectiveEnd - 1] === '\r')) {
+            effectiveEnd--
+        }
+        const selectedText = value.slice(selectionStart, effectiveEnd)
 
         // Case 1: selection already includes markers
         if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
             const inner = selectedText.slice(prefix.length, selectedText.length - suffix.length)
-            textarea.setRangeText(inner, selectionStart, selectionEnd, 'preserve')
+            textarea.setRangeText(inner, selectionStart, effectiveEnd, 'preserve')
             textarea.setSelectionRange(selectionStart, selectionStart + inner.length)
             return
         }
 
         // Case 2: markers surround the selection
         const beforeStart = selectionStart - prefix.length
-        const afterEnd = selectionEnd + suffix.length
+        const afterEnd = effectiveEnd + suffix.length
         if (
             beforeStart >= 0 &&
             value.slice(beforeStart, selectionStart) === prefix &&
-            value.slice(selectionEnd, afterEnd) === suffix
+            value.slice(effectiveEnd, afterEnd) === suffix
         ) {
             // Remove from right to left to avoid shifting indices.
-            textarea.setRangeText('', selectionEnd, afterEnd, 'preserve')
+            textarea.setRangeText('', effectiveEnd, afterEnd, 'preserve')
             textarea.setRangeText('', beforeStart, selectionStart, 'preserve')
-            textarea.setSelectionRange(beforeStart, selectionEnd - prefix.length)
+            textarea.setSelectionRange(beforeStart, effectiveEnd - prefix.length)
             return
         }
 
         // Default: wrap selection
-        textarea.setRangeText(prefix + selectedText + suffix, selectionStart, selectionEnd, 'preserve')
-        textarea.setSelectionRange(selectionStart + prefix.length, selectionEnd + prefix.length)
+        textarea.setRangeText(prefix + selectedText + suffix, selectionStart, effectiveEnd, 'preserve')
+        textarea.setSelectionRange(selectionStart + prefix.length, effectiveEnd + prefix.length)
         return
     }
 
@@ -231,7 +236,7 @@ interface FormatToolbarProps {
     images: Map<string, string>
 }
 
-type FormatType = 'bold' | 'italic' | 'underline' | 'highlight' | 'code'
+type FormatType = 'bold' | 'italic' | 'underline' | 'highlight' | 'code' | 'red'
 
 const formatMarkers: Record<FormatType, { prefix: string; suffix: string }> = {
     bold: { prefix: '**', suffix: '**' },
@@ -239,6 +244,7 @@ const formatMarkers: Record<FormatType, { prefix: string; suffix: string }> = {
     underline: { prefix: '__', suffix: '__' },
     highlight: { prefix: '==', suffix: '==' },
     code: { prefix: '`', suffix: '`' },
+    red: { prefix: '%%', suffix: '%%' },
 }
 
 export function FormatToolbar({ textareaRef, onChange, onImageAdd, onImageRemove, images }: FormatToolbarProps) {
@@ -257,6 +263,7 @@ export function FormatToolbar({ textareaRef, onChange, onImageAdd, onImageRemove
         { type: 'italic' as FormatType, icon: 'I', title: '斜体（⌘/Ctrl+I）', className: 'italic' },
         { type: 'underline' as FormatType, icon: 'U', title: '下划线（⌘/Ctrl+U）', className: 'underline' },
         { type: 'highlight' as FormatType, icon: '󰸗', title: '高亮（⌘/Ctrl+Shift+H）', className: 'bg-yellow-200 px-1' },
+        { type: 'red' as FormatType, icon: 'A', title: '红字（⌘/Ctrl+Shift+R）', className: 'text-red-600 font-semibold' },
         { type: 'code' as FormatType, icon: '</>', title: '行内代码（⌘/Ctrl+E）', className: 'font-mono text-[11px]' },
     ]
 
@@ -367,6 +374,8 @@ export function FormatToolbar({ textareaRef, onChange, onImageAdd, onImageRemove
                     >
                         {type === 'highlight' ? (
                             <span className="w-5 h-5 rounded bg-yellow-300 flex items-center justify-center text-xs">A</span>
+                        ) : type === 'red' ? (
+                            <span className="w-5 h-5 rounded bg-red-500 text-white flex items-center justify-center text-xs font-semibold">A</span>
                         ) : (
                             icon
                         )}
@@ -604,6 +613,11 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
             if (e.shiftKey && key === 'h') {
                 e.preventDefault()
                 runTextareaCommand(textarea, onChange, (el) => toggleInlineFormat(el, '==', '=='))
+                return
+            }
+            if (e.shiftKey && key === 'r') {
+                e.preventDefault()
+                runTextareaCommand(textarea, onChange, (el) => toggleInlineFormat(el, '%%', '%%'))
                 return
             }
             if (!e.shiftKey && key === 'e') {

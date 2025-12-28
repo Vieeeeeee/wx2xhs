@@ -125,9 +125,9 @@ body {
   pointer-events: none;
 }
 
-/* Background Style 3: Paper - User Provided Texture */
+/* Background Style 3: Paper - Dotted Grid Pattern */
 .card-preview.bg-paper {
-  background-color: #f1ede6;
+  background: #ffffff;
   position: relative;
 }
 
@@ -136,16 +136,39 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: url('/黄色纸背景.jpg');
-  background-size: 130% auto;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: saturate(0.1) brightness(1.05) contrast(0.9);
+  background-image: radial-gradient(circle, #b8b8b8 2px, transparent 2px);
+  background-size: 64px 64px;
+  pointer-events: none;
 }
 
-/* Background Style 4: Cold White */
+/* Background Style 4: Frosted Glass - 磨砂毛玻璃 */
 .card-preview.bg-grain {
-  background: #f8f9fc;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e8eef5 50%, #f5f7fa 100%);
+  position: relative;
+}
+
+.card-preview.bg-grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* 多层渐变模拟光晕效果 */
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(255, 255, 255, 0.8) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 85% 90%, rgba(200, 220, 255, 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(240, 245, 255, 0.5) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.card-preview.bg-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* SVG噪点纹理模拟磨砂质感 */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
 }
 
 .card-preview .card-text {
@@ -219,12 +242,17 @@ body {
 
 .card-preview .card-text u {
   text-decoration: underline;
+  text-decoration-thickness: 1px;
   text-underline-offset: 4px;
 }
 
 .card-preview .card-text mark {
   background: linear-gradient(180deg, transparent 60%, #fef08a 60%);
   padding: 0 4px;
+}
+
+.card-preview .card-text .red-text {
+  color: #dc2626;
 }
 
 /* Image styles */

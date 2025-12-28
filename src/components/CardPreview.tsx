@@ -13,6 +13,13 @@ interface Typography {
 }
 
 export type BackgroundStyle = 'classic' | 'grid' | 'paper' | 'grain'
+export type BgColorType = 'cool' | 'white' | 'warm'
+
+const bgColorMap: Record<BgColorType, string> = {
+    cool: '#f8fafc',
+    white: '#ffffff',
+    warm: '#fffcf5',
+}
 
 interface CardPreviewProps {
     card: Card
@@ -21,6 +28,7 @@ interface CardPreviewProps {
     onImageResize?: (id: string, widthPercent: number) => void
     typography?: Typography
     backgroundStyle?: BackgroundStyle
+    bgColor?: BgColorType
     forExport?: boolean
     displayScale?: number
 }
@@ -32,7 +40,8 @@ function escapeAngleBrackets(text: string): string {
 function preprocessCustomMarkup(text: string): string {
     const safe = escapeAngleBrackets(text)
     const withHighlight = safe.replace(/==([\s\S]+?)==/g, '<mark>$1</mark>')
-    return withHighlight.replace(/__([\s\S]+?)__/g, '<u>$1</u>')
+    const withUnderline = withHighlight.replace(/__([\s\S]+?)__/g, '<u>$1</u>')
+    return withUnderline.replace(/%%([\s\S]+?)%%/g, '<span class="red-text">$1</span>')
 }
 
 function parseContentSegments(text: string): Array<{ type: 'text' | 'image'; content: string }> {
@@ -184,7 +193,7 @@ function ResizableImage({ src, imageId, widthPercent, onResize, forExport, displ
     )
 }
 
-export function CardPreview({ card, images, imageSizes, onImageResize, typography, backgroundStyle = 'classic', forExport = false, displayScale }: CardPreviewProps) {
+export function CardPreview({ card, images, imageSizes, onImageResize, typography, backgroundStyle = 'classic', bgColor = 'white', forExport = false, displayScale }: CardPreviewProps) {
     const fontSize = typography?.fontSize ?? 32
     const lineHeight = typography?.lineHeight ?? 1.6
     const paragraphSpacing = typography?.paragraphSpacing ?? 1.2
@@ -200,10 +209,11 @@ export function CardPreview({ card, images, imageSizes, onImageResize, typograph
     }
 
     const getExportBackgroundStyle = (): React.CSSProperties => {
+        const baseColor = bgColorMap[bgColor]
         switch (backgroundStyle) {
             case 'grid':
                 return {
-                    background: '#F6F6F6',
+                    backgroundColor: baseColor,
                     backgroundImage: `
                         linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
                         linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px)
@@ -212,15 +222,31 @@ export function CardPreview({ card, images, imageSizes, onImageResize, typograph
                 }
             case 'paper':
                 return {
-                    background: '#f5f4f2'
+                    backgroundColor: baseColor,
+                    backgroundImage: 'radial-gradient(circle, #b8b8b8 2px, transparent 2px)',
+                    backgroundSize: '64px 64px'
                 }
-            case 'grain':
+            case 'grain': {
+                // 根据底色类型定制不同的光晕效果
+                const grainStyles: Record<BgColorType, { gradientMid: string; gradientEnd: string; accentColor: string }> = {
+                    cool: { gradientMid: '#e8eef8', gradientEnd: '#f0f4fa', accentColor: 'rgba(180, 200, 255, 0.5)' },
+                    white: { gradientMid: '#f5f5f5', gradientEnd: '#fafafa', accentColor: 'rgba(200, 200, 200, 0.3)' },
+                    warm: { gradientMid: '#f8f0e8', gradientEnd: '#fdf8f2', accentColor: 'rgba(255, 220, 180, 0.5)' },
+                }
+                const { gradientMid, gradientEnd, accentColor } = grainStyles[bgColor]
                 return {
-                    background: '#f8f9fc'
+                    backgroundColor: baseColor,
+                    backgroundImage: `
+                        linear-gradient(135deg, ${baseColor} 0%, ${gradientMid} 50%, ${gradientEnd} 100%),
+                        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(255, 255, 255, 0.85) 0%, transparent 50%),
+                        radial-gradient(ellipse 60% 50% at 85% 90%, ${accentColor} 0%, transparent 50%),
+                        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(255, 255, 255, 0.4) 0%, transparent 60%)
+                    `
                 }
+            }
             default:
                 return {
-                    background: 'linear-gradient(180deg, #fdfcfa 0%, #f9f7f4 100%)'
+                    backgroundColor: baseColor
                 }
         }
     }
@@ -285,6 +311,7 @@ export function CardPreview({ card, images, imageSizes, onImageResize, typograph
             <div
                 className={`card-preview bg-${backgroundStyle}`}
                 style={{
+                    ...getExportBackgroundStyle(),
                     transform: `scale(${scale})`,
                     transformOrigin: 'top left',
                     width: '1080px',
