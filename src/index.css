@@ -97,8 +97,13 @@ body {
   flex-direction: column;
   justify-content: flex-start;
   /* Align top to avoid clipping */
-  font-family: "Source Han Serif CN", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-    "Noto Serif SC", serif;
+  /* 字体回退链：思源宋体 -> Noto Serif SC -> 系统宋体 -> 通用 serif */
+  font-family: "Source Han Serif CN", "Noto Serif SC",
+    "STSong", "SimSun", "宋体", "Songti SC",
+    /* 系统宋体备选 */
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    /* 黑体备选 */
+    serif;
   position: relative;
   isolation: isolate;
 }
@@ -235,7 +240,8 @@ body {
 .card-preview .card-text strong {
   font-family: "Source Han Serif CN", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", serif;
   font-weight: 700;
-  font-synthesis: none;  /* 禁用浏览器字体合成，强制使用真实粗体字体 */
+  font-synthesis: none;
+  /* 禁用浏览器字体合成，强制使用真实粗体字体 */
   -webkit-font-smoothing: antialiased;
 }
 

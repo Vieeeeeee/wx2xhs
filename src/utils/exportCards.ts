@@ -136,7 +136,8 @@ export async function exportCards(cardIds: string[]): Promise<void> {
                         const strongElements = clonedDoc.querySelectorAll('strong')
                         strongElements.forEach((el) => {
                             const elem = el as HTMLElement
-                            elem.style.fontFamily = '"Source Han Serif CN", serif'
+                            // 字体回退链与 CSS 保持一致
+                            elem.style.fontFamily = '"Source Han Serif CN", "Noto Serif SC", "STSong", "SimSun", "宋体", "Songti SC", serif'
                             elem.style.fontWeight = '700'
                         })
                         // 强制内联红字样式
