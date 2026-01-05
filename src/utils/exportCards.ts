@@ -131,6 +131,21 @@ export async function exportCards(cardIds: string[]): Promise<void> {
                     scrollY: 0,
                     x: 0,
                     y: 0,
+                    onclone: (clonedDoc: Document) => {
+                        // 强制内联粗体样式，解决 Chrome + foreignObjectRendering 的字体渲染 bug
+                        const strongElements = clonedDoc.querySelectorAll('strong')
+                        strongElements.forEach((el) => {
+                            const elem = el as HTMLElement
+                            elem.style.fontFamily = '"Source Han Serif CN", serif'
+                            elem.style.fontWeight = '700'
+                        })
+                        // 强制内联红字样式
+                        const redTextElements = clonedDoc.querySelectorAll('.red-text')
+                        redTextElements.forEach((el) => {
+                            const elem = el as HTMLElement
+                            elem.style.color = '#dc2626'
+                        })
+                    },
                 })
 
                 const fileName = `card_${String(i + 1).padStart(2, '0')}.png`
