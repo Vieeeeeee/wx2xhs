@@ -55,6 +55,19 @@ function insertImagePlaceholder(textarea: HTMLTextAreaElement, imageId: string) 
     textarea.setSelectionRange(newPos, newPos)
 }
 
+/**
+ * Strip all occurrences of the given marker pair from the text.
+ * E.g., stripMarkers("hello **world** foo", "**", "**") => "hello world foo"
+ */
+function stripMarkers(text: string, prefix: string, suffix: string): string {
+    // Build a regex to match prefix + content + suffix
+    // Escape special regex chars in prefix/suffix
+    const escPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const escSuffix = suffix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`${escPrefix}([\\s\\S]*?)${escSuffix}`, 'g')
+    return text.replace(regex, '$1')
+}
+
 function toggleInlineFormat(textarea: HTMLTextAreaElement, prefix: string, suffix: string) {
     const value = textarea.value
     const selectionStart = textarea.selectionStart ?? 0
@@ -68,7 +81,7 @@ function toggleInlineFormat(textarea: HTMLTextAreaElement, prefix: string, suffi
         }
         const selectedText = value.slice(selectionStart, effectiveEnd)
 
-        // Case 1: selection already includes markers
+        // Case 1: selection already includes markers at boundaries
         if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
             const inner = selectedText.slice(prefix.length, selectedText.length - suffix.length)
             textarea.setRangeText(inner, selectionStart, effectiveEnd, 'preserve')
@@ -76,7 +89,7 @@ function toggleInlineFormat(textarea: HTMLTextAreaElement, prefix: string, suffi
             return
         }
 
-        // Case 2: markers surround the selection
+        // Case 2: markers surround the selection (just outside)
         const beforeStart = selectionStart - prefix.length
         const afterEnd = effectiveEnd + suffix.length
         if (
@@ -91,7 +104,19 @@ function toggleInlineFormat(textarea: HTMLTextAreaElement, prefix: string, suffi
             return
         }
 
-        // Default: wrap selection
+        // Case 3: selection contains markers of the same type inside - strip them first
+        const strippedText = stripMarkers(selectedText, prefix, suffix)
+
+        // If stripping changed the text, we're toggling OFF (removing nested markers)
+        if (strippedText !== selectedText) {
+            // Check if after stripping we should just leave it plain or wrap again
+            // If the original text had markers, toggling means removing them
+            textarea.setRangeText(strippedText, selectionStart, effectiveEnd, 'preserve')
+            textarea.setSelectionRange(selectionStart, selectionStart + strippedText.length)
+            return
+        }
+
+        // Default: wrap selection with markers
         textarea.setRangeText(prefix + selectedText + suffix, selectionStart, effectiveEnd, 'preserve')
         textarea.setSelectionRange(selectionStart + prefix.length, effectiveEnd + prefix.length)
         return
