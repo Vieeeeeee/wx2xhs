@@ -7,12 +7,23 @@ async function nextFrame(times = 1): Promise<void> {
     }
 }
 
-async function waitForFonts(timeoutMs = 3000): Promise<void> {
+async function waitForFonts(timeoutMs = 5000): Promise<void> {
     const fonts = document.fonts
     if (!fonts?.ready) return
 
+    // 显式预加载所有需要的字重，特别是粗体 (700)
+    // 这可以解决某些电脑上加粗文字无法正确渲染的问题
+    const fontLoadPromises = [
+        fonts.load('400 32px "Source Han Serif CN"'),
+        fonts.load('600 32px "Source Han Serif CN"'),
+        fonts.load('700 32px "Source Han Serif CN"'),  // 粗体 - 关键字重
+    ].map(p => p.catch(() => undefined))  // 忽略单个字体加载失败
+
     await Promise.race([
-        fonts.ready.then(() => undefined),
+        Promise.all([
+            fonts.ready.then(() => undefined),
+            ...fontLoadPromises,
+        ]).then(() => undefined),
         new Promise<void>(resolve => setTimeout(resolve, timeoutMs)),
     ])
 }
