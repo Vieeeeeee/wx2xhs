@@ -233,7 +233,10 @@ body {
 
 /* Formatted text styles */
 .card-preview .card-text strong {
+  font-family: "Source Han Serif CN", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", serif;
   font-weight: 700;
+  font-synthesis: none;  /* 禁用浏览器字体合成，强制使用真实粗体字体 */
+  -webkit-font-smoothing: antialiased;
 }
 
 .card-preview .card-text em {
